@@ -1,0 +1,2 @@
+# 统一用 LF：.sh 是 CRLF 时 bash 会报错；Lua 和文档也保持一致，避免无意义的 diff
+* text=auto eol=lf
