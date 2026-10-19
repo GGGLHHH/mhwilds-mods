@@ -33,8 +33,8 @@ OBSOLETE=(
 )
 DISABLED_DIR="reframework/autorun_disabled"
 
-tools/check.sh $(find src -name '*.lua' | sort)
-tools/build.sh
+bash tools/check.sh $(find src -name '*.lua' | sort)
+bash tools/build.sh
 # 按 src/mods/ 列 mod（不按 build/ 列：src 里删掉的 mod，build/ 里可能还留着上次的产物）
 mapfile -t BUILT < <(find src/mods -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 
