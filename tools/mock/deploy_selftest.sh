@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # tools/mock/deploy_selftest.sh：tools/deploy.sh 的废弃清单自测（docs/autoparry/MERGE.md 第 6.7、7.1 节）。
-# 只用临时目录：把 deploy.sh、check.sh 和 src/ 拷进一个临时「仓库」，MHWILDS_DIR 指向临时搭的假游戏目录，逐条核对：
+# 只用临时目录：把 deploy.sh、check.sh、build.sh 和 src/ 拷进一个临时「仓库」，MHWILDS_DIR 指向临时搭的假游戏目录，逐条核对：
 #   1. 游戏 autorun 里有旧的 AutoParryGS.lua → 挪进 reframework/autorun_disabled/（内容不变，不删除），新文件照常复制，别的文件不碰
 #   2. 再跑一次 → 什么都不挪
 #   3. autorun_disabled/ 里已有同名文件 → 新挪的文件名加时间戳，旧的不覆盖
-#   4. 清单里的文件也在 src/ 里 → 报错退出，一个文件都不复制
+#   4. 清单里的文件也在要部署的文件（build/）里 → 报错退出，一个文件都不复制
 #   5. 挪动失败（autorun_disabled 是个文件、建不了目录）→ 报错退出，一个文件都不复制，旧脚本原样留在 autorun
 #   6. --dry-run → 列出要挪、要复制的，什么都不改
+#   7. 共享库装进了 autorun/<Mod>/lib/（和 src/lib/ 逐字节相同）；游戏的 autorun/<Mod>/ 里多出来的旧模块只提示（?）、不删
 # 用法：bash tools/mock/deploy_selftest.sh [--keep]   （--keep 留下临时目录，路径打印出来）
 #      DEPLOY=路径 可指定被测的 deploy.sh（变异测试用：比如把挪动改成删除，这里必须报失败）
 # 绝不碰真的游戏目录：MHWILDS_DIR 一律指向临时目录。
@@ -31,6 +32,7 @@ mk_repo() {
     mkdir -p "$r/tools"
     cp "$DEPLOY" "$r/tools/deploy.sh"
     cp "$REPO/tools/check.sh" "$r/tools/check.sh"
+    cp "$REPO/tools/build.sh" "$r/tools/build.sh"
     cp -r "$REPO/src" "$r/src"
 }
 # 假游戏目录：REF 在、autorun 里有旧放刀脚本、别的 mod 和探针、一份旧的 AutoGuardGS.lua
@@ -54,9 +56,9 @@ R="$TMP/repo"
 G="$TMP/game"
 mk_repo "$R"
 mk_game "$G"
-NEW="$R/src/reframework/autorun/AutoGuardGS.lua"
-if [ -e "$R/src/reframework/autorun/AutoParryGS.lua" ]; then
-    echo "src/ 里还有 AutoParryGS.lua：合并没做完（MERGE 第 6.8 节第 1 条），下面第 1 条会按「清单和 src 冲突」失败"
+NEW="$R/build/AutoGuardGS/reframework/autorun/AutoGuardGS.lua"   # deploy 时由 build.sh 组装
+if [ -n "$(find "$R/src" -name AutoParryGS.lua -print -quit)" ]; then
+    echo "src/ 里还有 AutoParryGS.lua：合并没做完（MERGE 第 6.8 节第 1 条），下面第 1 条会按「清单和要部署的文件冲突」失败"
 fi
 
 echo "1. 旧的 AutoParryGS.lua 挪进 autorun_disabled，新文件复制，别的不碰"
@@ -99,19 +101,19 @@ else
 fi
 [ ! -e "$G/reframework/autorun/AutoParryGS.lua" ] && ok "autorun 里又清掉了" || bad "autorun 里还在"
 
-echo "4. 清单里的文件也在 src/ 里：报错退出，一个文件都不复制"
+echo "4. 清单里的文件也在要部署的文件里：报错退出，一个文件都不复制"
 R4="$TMP/repo4"
 G4="$TMP/game4"
 mk_repo "$R4"
 mk_game "$G4"
-printf -- '-- accidentally kept\n' > "$R4/src/reframework/autorun/AutoParryGS.lua"
+printf -- '-- accidentally kept\n' > "$R4/src/mods/AutoGuardGS/reframework/autorun/AutoGuardGS/AutoParryGS.lua"
 run_deploy "$R4" "$G4"; rc=$?
 [ $rc -ne 0 ] && ok "退出码 $rc（非 0）" || bad "退出码 0（应当报错）"
 grep -q "old AutoGuardGS v1.4.2" "$G4/reframework/autorun/AutoGuardGS.lua" && ok "AutoGuardGS.lua 没被复制" \
     || bad "AutoGuardGS.lua 被复制了"
 grep -q "old standalone AutoParryGS" "$G4/reframework/autorun/AutoParryGS.lua" && ok "旧的 AutoParryGS.lua 没被动" \
     || bad "旧的 AutoParryGS.lua 被动了"
-grep -q "也在 src/ 里" "$TMP/out.txt" && ok "报错写明「也在 src/ 里」" || bad "报错原因不对：$(tail -2 "$TMP/out.txt")"
+grep -q "也在要部署的文件里" "$TMP/out.txt" && ok "报错写明「也在要部署的文件里」" || bad "报错原因不对：$(tail -2 "$TMP/out.txt")"
 
 echo "5. 挪动失败（autorun_disabled 是个文件，建不了目录）：报错退出，一个文件都不复制"
 G5="$TMP/game5"
@@ -133,6 +135,18 @@ grep -q "↷ reframework/autorun/AutoParryGS.lua" "$TMP/out.txt" && grep -q "→
     && ok "列出了要挪、要复制的" || bad "没列全：$(cat "$TMP/out.txt" | tail -5)"
 grep -q "old standalone AutoParryGS" "$G6/reframework/autorun/AutoParryGS.lua" && [ ! -e "$G6/reframework/autorun_disabled" ] \
     && grep -q "old AutoGuardGS v1.4.2" "$G6/reframework/autorun/AutoGuardGS.lua" && ok "什么都没改" || bad "--dry-run 改了东西"
+
+echo "7. 共享库装进 autorun/<Mod>/lib/；游戏里多出来的旧模块只提示、不删"
+same "$R/src/lib/util.lua" "$G/reframework/autorun/AutoGuardGS/lib/util.lua" \
+    && same "$R/src/lib/wilds/player.lua" "$G/reframework/autorun/AutoGuardGS/lib/wilds/player.lua" \
+    && ok "lib/util.lua、lib/wilds/player.lua 和 src/lib/ 相同" || bad "共享库没装进 autorun/AutoGuardGS/lib/"
+[ ! -e "$G/reframework/autorun/lib" ] && ok "没有装进公共的 autorun/lib/" || bad "装进了公共的 autorun/lib/"
+printf -- '-- old module\n' > "$G/reframework/autorun/AutoGuardGS/old_module.lua"
+run_deploy "$R" "$G"; rc=$?
+[ $rc -eq 0 ] && ok "退出码 0" || bad "退出码 $rc"
+grep -q "? reframework/autorun/AutoGuardGS/old_module.lua" "$TMP/out.txt" && ok "列出了多出来的 old_module.lua" \
+    || bad "没列出多出来的文件：$(tail -3 "$TMP/out.txt")"
+grep -q "old module" "$G/reframework/autorun/AutoGuardGS/old_module.lua" && ok "old_module.lua 没被删" || bad "old_module.lua 被删了"
 
 if [ $KEEP -eq 1 ]; then echo "临时目录留着：$TMP"; else rm -rf "$TMP"; fi
 if [ $FAILS -eq 0 ]; then

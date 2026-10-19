@@ -26,7 +26,8 @@
 --   lua tools/mock/run.lua two_entries shell   只跑指定场景
 --   选项：--smoke            用 tools/mock/smoke/ 下的冒烟脚本（验证 mock 本身；冒烟 rc 按 rc1 口径、旧的按脚本计数
 --                            的引用模型，跳过只测正式脚本功能的场景）
---         --merged           合并模式（见上）；--merged-path PATH 指定被测的合并脚本（变异测试用，默认 src/ 的 AutoGuardGS.lua，
+--         --merged           合并模式（见上）；--merged-path PATH 指定被测的合并脚本（变异测试用，默认组装好的 build/AutoGuardGS/…/AutoGuardGS.lua，
+--                            先跑 tools/build.sh；它的模块在同一 autorun 目录下按名字找，
 --                            给了路径就同时打开合并模式）；--guard142 PATH 指定归档的 v1.4.2（防御场景的参照组）
 --         --rc PATH          指定 v16 场景的被测放刀脚本（变异测试用它指向 scratchpad 里改坏的副本）；
 --         --rc151 PATH       指定归档 v1.5.1；--rc1 PATH 指定 rc1；--probe PATH 指定探针；--probe101 PATH 指定归档 apcal-1.0.1
@@ -194,6 +195,31 @@ local function list_dir(p)
     return out
 end
 
+local function list_subdirs(p)
+    local cmd = IS_WIN and ("dir /b /ad " .. winpath(p) .. " 2>nul")
+        or ("find '" .. p .. "' -mindepth 1 -maxdepth 1 -type d -printf '%f\\n' 2>/dev/null")
+    local h = io.popen(cmd)
+    local out = {}
+    if h then
+        for line in h:lines() do
+            line = line:gsub("\r$", "")
+            if line ~= "" then out[#out + 1] = line end
+        end
+        h:close()
+    end
+    return out
+end
+
+-- p 下全部文件（递归），返回相对 p 的路径（用 / 分隔），排好序
+local function list_tree(p, prefix, out)
+    out = out or {}
+    prefix = prefix or ""
+    for _, f in ipairs(list_dir(p)) do out[#out + 1] = prefix .. f end
+    for _, d in ipairs(list_subdirs(p)) do list_tree(p .. "/" .. d, prefix .. d .. "/", out) end
+    table.sort(out)
+    return out
+end
+
 local function write_text(path, s)
     local f = io.open(path, "wb")
     if not f then return false end
@@ -247,7 +273,7 @@ else
         -- 合并版（MERGE 第 6.2 节第 1 条）：脚本名 AutoGuardGS（菜单操作、故障、副作用按它归属），放刀记录的日志标签仍是
         -- [AutoParryGS]（tag / rec_tag），防御自己的行是 [AutoGuardGS]（guard_tag，不解析、不限速）
         merged = { name = "AutoGuardGS", tag = "AutoParryGS", rec_tag = "AutoParryGS", guard_tag = "AutoGuardGS",
-            path = opts.merged_path or (ROOT .. "/src/reframework/autorun/AutoGuardGS.lua"), role = "rc", guard = true,
+            path = opts.merged_path or (ROOT .. "/build/AutoGuardGS/reframework/autorun/AutoGuardGS.lua"), role = "rc", guard = true,
             ver = "merged", policy = "no_release", json = false },
         v15 = { name = "AutoParryGS", tag = "AutoParryGS", path = opts.rc151 or archive_path("AutoParryGS_v151.lua"),
             role = "rc", ver = "v15", policy = "manual" },
@@ -3569,29 +3595,46 @@ end
 
 -- 测试脚本自己生成的变体（V16 第 8.4 节第 42 条「另由测试脚本生成一份去掉 add_ref 的 v1.6 副本」；MERGE 第 6.5 节
 -- merge_ref_local_noaddref 对合并版同样做）：strip_add_ref = 把 X:add_ref() 换成 X:get_address()（同样是调用、没有引用副作用），
--- 写进场景输出目录。合并版源码里 r:add_ref() 必须恰好出现一次（只有消息钩子登记预告时那一处），否则生成失败、场景判失败
+-- 写进场景输出目录。合并版源码里 r:add_ref() 必须恰好出现一次（只有消息钩子登记预告时那一处），否则生成失败、场景判失败。
+-- 合并版是一棵模块树（入口 + 同名目录里的模块和共享库，docs/ARCHITECTURE.md）：整棵树复制进 <输出>/<名字>_<变体>/，
+-- 每个文件都做同样的替换，「恰好一次」按整棵树数
 local function make_variant(s, sc, out_dir)
     if not sc.rc_transform then return s end
-    local src = read_text(s.path)
-    if not src then return nil, "读不到 " .. s.path end
-    local out, n = src, 0
-    if sc.rc_transform == "strip_add_ref" then
-        local c1, c2
-        out, c1 = out:gsub("([%w_%.]+):add_ref%(%)", "%1:get_address()")
+    if sc.rc_transform ~= "strip_add_ref" then return nil, "不认识的变体 " .. tostring(sc.rc_transform) end
+    local function strip(src)
+        local out, c1 = src:gsub("([%w_%.]+):add_ref%(%)", "%1:get_address()")
+        local c2
         out, c2 = out:gsub("pcall%(([%w_%.]+)%.add_ref,%s*([%w_%.]+)%)", "pcall(%1.get_address, %2)")
-        n = c1 + c2
-    else
-        return nil, "不认识的变体 " .. tostring(sc.rc_transform)
+        local _, n_r = src:gsub("%f[%w_]r:add_ref%(%)", "")
+        return out, c1 + c2, n_r
+    end
+    local root = s.path:match("^(.*)[/\\][^/\\]*$") or "."
+    local entry = s.path:match("([^/\\]+)$")
+    local files = { entry }
+    if s.ver == "merged" then
+        local mod_dir = entry:gsub("%.lua$", "")
+        for _, f in ipairs(list_tree(root .. "/" .. mod_dir)) do files[#files + 1] = mod_dir .. "/" .. f end
+    end
+    local vroot = out_dir .. "/" .. s.name .. "_" .. sc.rc_transform
+    local n, n_r = 0, 0
+    for _, rel in ipairs(files) do
+        local src = read_text(root .. "/" .. rel)
+        if not src then return nil, "读不到 " .. root .. "/" .. rel end
+        local out = src
+        if rel:match("%.lua$") then
+            local c, cr
+            out, c, cr = strip(src)
+            n, n_r = n + c, n_r + cr
+        end
+        local dst = vroot .. "/" .. rel
+        mkdir_p(dst:match("^(.*)/[^/]*$"))
+        if not write_text(dst, out) then return nil, "写不出 " .. dst end
     end
     if n == 0 then return nil, "被测脚本里没找到 add_ref 调用，生成不了去掉 add_ref 的副本" end
-    if s.ver == "merged" then
-        local _, n_r = src:gsub("%f[%w_]r:add_ref%(%)", "")
-        if n_r ~= 1 or n ~= 1 then
-            return nil, string.format("合并版源码里 r:add_ref() 应恰好出现一次（实际 r:add_ref() %d 处、add_ref 调用共 %d 处）", n_r, n)
-        end
+    if s.ver == "merged" and (n_r ~= 1 or n ~= 1) then
+        return nil, string.format("合并版源码里 r:add_ref() 应恰好出现一次（实际 r:add_ref() %d 处、add_ref 调用共 %d 处）", n_r, n)
     end
-    local path = out_dir .. "/" .. s.name .. "_" .. sc.rc_transform .. ".lua"
-    if not write_text(path, out) then return nil, "写不出 " .. path end
+    local path = vroot .. "/" .. entry
     local v = {}
     for k, x in pairs(s) do v[k] = x end
     v.path, v.variant, v.variant_n = path, sc.rc_transform, n
@@ -4058,6 +4101,26 @@ local function trace_texts(R, no_frame)
     return out
 end
 
+-- 比两个跑法的轨迹前先规范化：同一帧、同一阶段、同一钩子里连续几次写同一个类型的字段（「set 类型.字段=值」），
+-- 组内按文字排序。为什么：参照组 v1.4.2 还原防御角度时用 pairs 遍历 { _GuardDegree, _AimGuardDegree }，Lua 5.4 的字符串
+-- 哈希种子每次启动随机，pairs 的顺序每次运行都可能不同（两次全量运行实测顺序相反）；合并版按后进先出还原（lib/patch）。
+-- 两个字段互不相干，写的先后不影响结果，组内顺序不算差异
+local function normalize_sets(list)
+    local out, i = {}, 1
+    local function key(s) return s:match("^(.- set [%w_%.]-)%.[%w_]+=") end
+    while i <= #list do
+        local k = key(list[i])
+        local j = i
+        while k and j + 1 <= #list and key(list[j + 1]) == k do j = j + 1 end
+        local group = {}
+        for x = i, j do group[#group + 1] = list[x] end
+        table.sort(group)
+        for _, s in ipairs(group) do out[#out + 1] = s end
+        i = j + 1
+    end
+    return out
+end
+
 -- 按顺序找一串模式（Lua 模式，按轨迹行匹配）；返回缺的那一条
 local function seq_find(list, pats)
     local i = 1
@@ -4093,7 +4156,7 @@ local function check_merged_only(sc, runs)
     for _, pair in ipairs(mx.same_guard or {}) do
         local a, b = get(pair[1]), get(pair[2])
         if a and b then
-            local ta, tb = trace_texts(a), trace_texts(b)
+            local ta, tb = normalize_sets(trace_texts(a)), normalize_sets(trace_texts(b))
             local n = math.max(#ta, #tb)
             local shown = 0
             for i = 1, n do

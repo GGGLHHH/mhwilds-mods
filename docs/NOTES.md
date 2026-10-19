@@ -5,7 +5,7 @@
 - 标注：**实测** = 由数据或日志直接得出（带样本量或出处）；**推测** = 由类型库、源码或机制推断，没有直接测到。没有标注的条目是开发时在游戏里直接验证过的。
 - 自动放刀的数据、推导和规格在 `docs/autoparry/`：`SPEED.md`（怪物速度与放刀时机）、`V16.md`（放刀规则 v1.6）、`MERGE.md`（并入 AutoGuardGS v1.5）。这里只摘结论。
 - 数据代号：第 1 轮、2a、2b、2c 是设计阶段的 4 段数据（怪 em19 缠蛙、em20、em23、em27）；A 阶段是 2026-10-11 在 5 只新怪上只记录、不放刀的机制检验；v1.6 试打是 2026-10-11 开着放刀的实测。
-- 自动放刀从 AutoGuardGS v1.5 起写在 `AutoGuardGS.lua` 里（独立的 `AutoParryGS.lua` 已删，归档在 `tools/archive/`）；放刀记录的日志标签仍是 `[AutoParryGS]`。
+- 自动放刀从 AutoGuardGS v1.5 起并入 AutoGuardGS（独立的 `AutoParryGS.lua` 已删，归档在 `tools/archive/`），代码在 `src/mods/AutoGuardGS/reframework/autorun/AutoGuardGS/parry.lua`，防御在同目录的 `guard.lua`；通用的读写抽进了共享库 `src/lib/`（`docs/ARCHITECTURE.md`）。放刀记录的日志标签仍是 `[AutoParryGS]`。
 
 ## 角色与动作
 
@@ -15,7 +15,9 @@
 - 动作控制器：`HunterCharacter:get_BaseActionController()` → `ace.cActionController`
   - `ACTION_ID = { _Category, _Index }`，对应 `_ActionList[cat][idx]`
   - 大剑（Wp00）：分类 0 是通用动作，分类 1 是大剑基础动作，分类 2 是大剑攻击动作
-- 武器类型 `get_WeaponType()`：大剑 = 0
+- 武器类型 `get_WeaponType()`，枚举 `app.WeaponDef.TYPE`（实测，2026-10-19 探针 WeaponTypeProbe 读枚举全表）：`LONG_SWORD=0 SHORT_SWORD=1 TWIN_SWORD=2 TACHI=3 HAMMER=4 WHISTLE=5 LANCE=6 GUN_LANCE=7 SLASH_AXE=8 CHARGE_AXE=9 ROD=10 BOW=11 HEAVY_BOWGUN=12 LIGHT_BOWGUN=13`（INVALID=-1，MAX=14）
+  - **游戏内部的 LONG_SWORD 是大剑**，太刀叫 TACHI：拿大剑读到 0、换太刀读到 3（实测）。其余武器的中文对应按名字推断（WHISTLE 狩猎笛、ROD 操虫棍、SLASH_AXE 斩击斧、CHARGE_AXE 充能斧），和 _CatLib 的编号表一致
+  - 代码里用 `lib/wilds/weapon` 的 `TYPE`（键是游戏的枚举名）
 - 动作属性 `isActionAttrCurrentAction(app.HunterDef.ACTION_ATTR)`：游戏给动作打的标签（DODGE、DAMAGE、ITEM_USE、WP_OFF……），所有武器通用，适合做过滤条件
 
 ### 大剑动作编号（部分）
@@ -213,6 +215,17 @@ Q  = (hs − (X − X0_e)) / m    X0_e：条目第一次读到时的 X；Q = 真
 - **B 阶段（正式验收）没做**：V16 第 9.2 节的协议（A 阶段那几只新怪、每只至少 15 次有接触的放刀）没有执行。新怪上的接住率、空放率都没有数；em19 是设计数据里见过的怪
 - **之后怎么监控**：合并进 AutoGuardGS v1.5 后，打开「调试日志」，每次放刀写 `[AutoParryGS] FIRE` / `RES` 两行，用 `tools/apcal_analyze.py` 离线汇总（合并版只有日志，没有 JSON、STAT、SKIP、VETO）。要细分放早、空挥、打断，需要同时跑 APCal
   - 用户现在的 `AutoGuardGS.json` 仍开着上面那几个测试开关，部署后的监控样本也是在这些条件下采的。正式验收（B 阶段）时开不开还没定
+
+## 待验证的线索（来自 _CatLib）
+
+社区库 _CatLib（lingsamuel，v1.14.0，本地在 `Desktop\_CatLib`，没有许可证文件，只看不抄）里用到、我们还没验证过的接口。做别的武器、别的功能时先用 MCP 核对，再写探针实测，之后才能当结论用。下面都是**推测**。
+
+- 前置钩子往后置钩子传数据：`thread.get_hook_storage()` 返回一张表，同一次调用的 pre / post 共用（REF API）。比模块级变量稳：钩子嵌套、重入时不会串
+- 能不能取消当前动作：`HunterCharacter:checkCancelMotion(app.ACTION_CANCEL_INDEX, System.Boolean)`、`checkPreCancelMotion(app.ACTION_CANCEL_INDEX)`；输入判定：`app.PlayerUtil.checkCommandResult(app.cPlayerBTableCommandWork, app.HunterDef.BTABLE_COMMAND_OPTION, app.PlayerCommand.TYPE)`。可能补上 `checkContainsActionInCurrentBTable` 不看时机的缺口（见「防御」）
+- 武器：`HunterCharacter:get_Weapon()._WpType`、副武器 `get_ReserveWeapon()` / `get_ReserveWeaponHandling()`
+- 时机事件：换场景、快速旅行结束 `app.PlayerManager.evSceneLoadEnd_FastTravel()`；任务开始、结束 `app.cQuestPlaying.enter()` / `exit()`；换装备 `app.GUIManager.onPlEquipChange()`
+- 游戏语言 `app.GUIManager:getSystemLanguageToApp()`（via.Language：日 0、英 1、繁中 12、简中 13）；按 GUID 取游戏文本 `app.MessageUtil` 的 getText 系列。菜单要做多语言时用
+- 时间：`via.Application` 的 `get_UpTimeSecond`、`get_DeltaTime`（静态方法）
 
 ## 走过的弯路
 

@@ -1715,7 +1715,7 @@ end
 -- ---------- 环境表 ----------
 
 local ALLOWED_GLOBALS = {
-    "sdk", "re", "imgui", "log", "json", "ValueType", "draw", "fs", "pairs", "ipairs", "pcall", "tostring",
+    "sdk", "re", "imgui", "log", "json", "ValueType", "draw", "fs", "require", "pairs", "ipairs", "pcall", "tostring",
     "tonumber", "string", "math", "table", "type", "error", "select", "next", "print", "os",
     "setmetatable", "getmetatable", "rawget", "rawset", "rawequal", "rawlen", "assert",
 }
@@ -2251,6 +2251,36 @@ function World:make_env(script)
     return env
 end
 
+-- 被测脚本的 require（docs/ARCHITECTURE.md）。照 REF 的规则：模块名的点换成 /，在入口脚本所在的 autorun 目录下找 <名字>.lua
+-- （REF 不认 ?/init.lua：HitboxViewer 也写全名 require("HitboxViewer.box.init")）；chunk 拿到 (模块名, 文件路径) 两个参数，
+-- 库靠第一个算相对前缀。
+-- 和真 REF 的一处不同：真 REF 所有脚本共用一个 package.loaded，这里每个脚本一份缓存、模块在这个脚本的环境表里运行——
+-- 副作用、故障、违规才能按脚本归属。各 mod 的模块名带自己的命名空间、库没有模块级状态，两种做法结果一样。
+-- modules[名字] = { path, ret }，给断言看载入了哪些模块
+function World:make_require(env, entry_path, modules)
+    local root = entry_path:match("^(.*)[/\\][^/\\]*$") or "."
+    local loading = {}
+    return function(modname)
+        if type(modname) ~= "string" then error("bad argument #1 to 'require' (string expected)", 2) end
+        local m = modules[modname]
+        if m then return m.ret end
+        if loading[modname] then error("require 循环：" .. modname, 2) end
+        local file = root .. "/" .. (modname:gsub("%.", "/")) .. ".lua"
+        local fh = io.open(file, "rb")
+        if not fh then error("module '" .. modname .. "' not found: no file '" .. file .. "'", 2) end
+        local code = fh:read("a")
+        fh:close()
+        local chunk, err = load(code, "@" .. file, "t", env)
+        if not chunk then error(err, 2) end
+        loading[modname] = true
+        local ret = chunk(modname, file)
+        loading[modname] = nil
+        if ret == nil then ret = true end
+        modules[modname] = { path = file, ret = ret }
+        return ret
+    end
+end
+
 -- 载入被测脚本：独立环境表 + load(源码, 名字, "t", env)
 function World:load_script(name, path, tag)
     local f = io.open(path, "rb")
@@ -2258,8 +2288,10 @@ function World:load_script(name, path, tag)
     local src = f:read("a")
     f:close()
     local env = self:make_env(name)
+    local modules = {}
+    rawset(env, "require", self:make_require(env, path, modules))
     local chunk, err = load(src, "@" .. path, "t", env)
-    self.scripts[name] = { env = env, path = path, tag = tag, src = src }
+    self.scripts[name] = { env = env, path = path, tag = tag, src = src, modules = modules }
     self.script_order[#self.script_order + 1] = name
     if not chunk then
         self:violation("SCRIPT_ERROR", "语法错误: " .. tostring(err), name)

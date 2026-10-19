@@ -64,15 +64,20 @@
 ## 安装
 
 1. 安装 [REFramework](https://github.com/praydog/REFramework-nightly/releases) nightly 版（社区汉化版也可以）
-2. 运行 `tools/deploy.sh`，或者把 `src/reframework/` 复制到游戏根目录（手动复制时，先把 `reframework/autorun/` 里旧的 `AutoParryGS.lua` 挪走，见上一节）
+2. 运行 `tools/deploy.sh`；或者用 `tools/build.sh --zip` 打出 `dist/AutoGuardGS-v1.5.zip`，解压到游戏根目录（手动安装时，先把 `reframework/autorun/` 里旧的 `AutoParryGS.lua` 挪走，见上一节）。装好后 `reframework/autorun/` 里是 `AutoGuardGS.lua` 加一个同名目录 `AutoGuardGS/`（模块和共享库），两样都要在
 3. 进游戏，在 REF 菜单里点 Reset Scripts 或重启游戏
 4. 核对：Script Generated UI 顶层只有一个「大剑自动防御 v1.5」树节点，展开后里面有「自动放刀（实验）」那个勾选框和提前量滑块。如果顶层还另有一个单独的「自动放刀（实验）」树节点（和「大剑自动防御」并列），说明旧的 `AutoParryGS.lua` 还在 autorun 里
 
 ## 开发
 
+代码结构（共享库、mod 怎么分层、库的约定、怎么新建 mod）见 `docs/ARCHITECTURE.md`。
+
 ```bash
-tools/check.sh      # 检查全部 Lua：语法、意外的全局变量（拼写错误、漏写 local）、手动 release（引用记账）等
-tools/deploy.sh     # 先检查，再挪走已废弃的旧文件，最后把 src/ 部署到游戏目录（MHWILDS_DIR 可覆盖路径）
+tools/test.sh [--quick]   # 全部测试：检查、库单元测试、组装、模板冒烟、工具自测、mock 合并模式（--quick 跳过 mock）
+tools/check.sh            # 检查全部 Lua：语法、意外的全局变量（拼写错误、漏写 local）、手动 release（引用记账）、require 命名空间等
+tools/build.sh [--zip]    # 组装 build/<Mod>/（mod + 共享库）；--zip 另打发布包 dist/<Mod>-<版本>.zip
+tools/deploy.sh           # 检查、组装，再挪走已废弃的旧文件，最后把 build/ 部署到游戏目录（MHWILDS_DIR 可覆盖路径）
+tools/new_mod.sh 名字      # 从模板新建一个 mod
 ```
 
 - 需要 Lua 5.4（`lua`、`luac`，和 REFramework 内置的 Lua 同一个大版本；不在 PATH 里就写全路径）和 Python 3（只用标准库）。
@@ -82,7 +87,7 @@ tools/deploy.sh     # 先检查，再挪走已废弃的旧文件，最后把 src
 
 ```bash
 lua tools/mock/run.lua                     # 全部场景，跑归档的 v1.6 放刀脚本（参照组）
-lua tools/mock/run.lua --merged            # 合并后的 AutoGuardGS.lua：调试日志开、关各跑一遍，逐刀和参照组比，任何差异都算失败；另跑防御、配置迁移、两部分交互的场景
+lua tools/mock/run.lua --merged            # 组装好的 build/AutoGuardGS（先跑 tools/build.sh）：调试日志开、关各跑一遍，逐刀和参照组比，任何差异都算失败；另跑防御、配置迁移、两部分交互的场景
 lua tools/mock/run.lua --merged v16_pb     # 只跑指定的场景
 lua tools/mock/run.lua --smoke             # 冒烟：验证 mock 本身
 lua tools/mock/run.lua --merged --gc-every-frame v16_ref_shared   # 每帧强制回收，查引用记账
@@ -104,7 +109,8 @@ python tools/apcal_analyze.py <数据目录> --log <re2_framework_log.txt> --ses
 
 目录：
 
-- `src/`：正式发布的脚本，**改这里**，再用 deploy 部署，不要直接改游戏目录
+- `src/lib/`：共享库（通用层 + `wilds/` 游戏层），打包时复制进每个 mod；`src/mods/<Mod>/`：各个 mod。**改这里**，再用 deploy 部署，不要直接改游戏目录
+- `templates/ModTemplate/`：新 mod 的模板；`tools/test/`：库单元测试、模板冒烟
 - `probes/`：研究过程中写的探针，只记录、不修改游戏，留作参考；不由 deploy 部署
 - `tools/archive/`：归档的旧版脚本（`AutoParryGS_v1.6.lua`、`AutoGuardGS_v1.4.2.lua` 等），给模拟测试当参照组、回滚用；不部署
 - `tools/mock/`：模拟测试；`tools/apcal_analyze.py`：放刀日志离线分析；`tools/atp_analyze.py`、`tools/stage_a_judge.py`：时机机制检验（A 阶段）的分析
