@@ -89,6 +89,8 @@ tools/new_mod.sh 名字      # 从模板新建一个 mod
 ```
 
 - 需要 Lua 5.4（`lua`、`luac`，和 REFramework 内置的 Lua 同一个大版本；不在 PATH 里就写全路径）和 Python 3（只用标准库）。
+- **GitHub Actions**（`.github/workflows/ci.yml`）：每次推送和 PR 都在 Ubuntu 上跑 `tools/test.sh`，通过后把发布包作为 Artifact 保留 14 天。
+- **发版**：先把代码里的版本号（AutoGuardGS 是 `const.lua` 的 `K.VERSION`）改好并推到 `main`，再推标签 `<Mod>-v<版本>`，例如 `git tag AutoGuardGS-v1.5.1 && git push origin AutoGuardGS-v1.5.1`。Actions 测试通过后会建 GitHub Release，挂上 `AutoGuardGS-v1.5.1.zip`。标签里的版本和代码对不上时会直接失败，不会发出去。
 - `deploy.sh` 的废弃清单（脚本里的 `OBSOLETE`，现在只有 `reframework/autorun/AutoParryGS.lua`）：部署前先把这些旧文件挪到 `reframework/autorun_disabled/`（重名时加时间戳，不删除），挪不动就一个新文件都不复制，免得新旧脚本同时运行。探针不在清单里：研究时手动放进 autorun，用完手动挪走。
 
 **模拟测试**（`tools/mock/`：不开游戏，用假的 REF API 逐帧驱动脚本；场景和断言见 `tools/mock/run.lua` 头注释）：

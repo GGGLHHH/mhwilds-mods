@@ -116,7 +116,8 @@ tools/build.sh --zip AutoGuardLS   # 发布包 dist/AutoGuardLS-<版本>.zip
 | `tools/check.sh` | 语法、意外的全局变量、手动扣引用、字形、`require` 命名空间 |
 | `tools/build.sh [--zip] [Mod…]` | 组装 `build/<Mod>/`，可选打 zip |
 | `tools/deploy.sh [--dry-run]` | 检查 → 组装 → 挪走废弃文件 → 把 `build/*` 复制进游戏目录。游戏的 `autorun/<Mod>/` 里多出来的旧文件只提示、不删 |
-| `tools/test.sh [--quick]` | 全部测试；不加 `--quick` 时还跑 mock 合并模式（约 4 分钟） |
+| `tools/test.sh [--quick]` | 全部测试；不加 `--quick` 时还跑 mock 合并模式（Windows 约 4 分钟，Linux 约 9 分钟） |
+| GitHub Actions（`.github/workflows/ci.yml`） | 每次推送、每个 PR 在 Ubuntu 上跑 `tools/test.sh`，通过后把发布包作为 Artifact 保留 14 天；推标签 `<Mod>-v<版本>` 时核对版本号、建 Release、挂上 zip |
 
 mock 测的是 `build/` 里组装好的那份，和部署、发布的是同一份文件。mock 的 `require` 照 REF 的规则在入口脚本所在的 autorun 目录下找模块；模块缓存每个脚本一份，模块在这个脚本的环境表里运行，这样副作用和故障注入还能按脚本归属。
 

@@ -60,8 +60,17 @@ for mod in "${mods[@]}"; do
         name="$mod${ver:+-$ver}.zip"
         mkdir -p dist
         rm -f "dist/$name"
-        # 用 Python 打包：Git Bash 不自带 zip。-I 隔离模式，不从当前目录载入模块
-        python -I - "$out" "dist/$name" <<'PY'
+        # 用 Python 打包：Git Bash 不自带 zip。-I 隔离模式，不从当前目录载入模块。
+        # Linux（GitHub Actions）上通常只有 python3，Windows 上的 python3 可能是应用商店的占位程序（一跑就退出码 49），
+        # 所以挨个试，能真正跑起来的才用
+        PY="${PYTHON:-}"
+        if [ -z "$PY" ]; then
+            for c in python3 python; do
+                if command -v "$c" >/dev/null 2>&1 && "$c" -c "" >/dev/null 2>&1; then PY="$c"; break; fi
+            done
+        fi
+        if [ -z "$PY" ]; then echo "找不到能用的 Python（可用 PYTHON 环境变量指定）" >&2; exit 2; fi
+        "$PY" -I - "$out" "dist/$name" <<'PY'
 import os, sys, zipfile
 root, dst = sys.argv[1], sys.argv[2]
 with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as z:

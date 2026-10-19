@@ -1,0 +1,100 @@
+# 自动测试与打包（docs/ARCHITECTURE.md「构建、部署、测试」）
+#
+# - 每次推送、每个 PR：跑 tools/test.sh（检查、库单元测试、组装、模板冒烟、工具自测、mock 183 个场景），
+#   通过后把每个 mod 的源码发布包作为 Artifact 留 14 天（试用版）；失败时上传 mock 的输出方便排查
+# - 推标签 <Mod>-v<版本>（例如 AutoGuardGS-v1.5.1）：测试通过后只打这个 mod 的包，核对标签里的版本和代码里的
+#   VERSION 一致，然后建 GitHub Release、挂上 dist/<Mod>-v<版本>.zip（GPL-3.0：包里带 LICENSE.txt）
+# 本地要跑同样的测试：bash tools/test.sh
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["*-v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40          # mock 在 Linux 上约 9 分钟（WSL 实测）
+    steps:
+      - uses: actions/checkout@v4
+
+      # Ubuntu 的包只提供 lua5.4 / luac5.4，脚本里找的是 lua / luac：建两个同名链接放进 PATH
+      - name: Install Lua 5.4
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q lua5.4
+          mkdir -p "$RUNNER_TEMP/bin"
+          ln -s "$(command -v lua5.4)" "$RUNNER_TEMP/bin/lua"
+          ln -s "$(command -v luac5.4)" "$RUNNER_TEMP/bin/luac"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Versions
+        run: |
+          lua -v
+          luac -v
+          python3 --version
+
+      - name: Test (tools/test.sh)
+        run: bash tools/test.sh
+
+      - name: Package
+        run: bash tools/build.sh --zip
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ github.sha }}
+          path: dist/*.zip
+          retention-days: 14
+
+      - name: Upload mock output (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mock-out-${{ github.sha }}
+          path: tools/mock/out
+          retention-days: 7
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write            # 建 Release、上传 zip
+    steps:
+      - uses: actions/checkout@v4
+
+      # 标签 <Mod>-v<版本>：mod 必须存在；打出来的包名必须正好是 <Mod>-v<版本>.zip，
+      # 否则说明代码里的 VERSION 和标签对不上（例如忘了改 const.lua 的 K.VERSION）
+      - name: Build release package
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          MOD="${TAG%-v*}"
+          VER="v${TAG##*-v}"
+          if [ ! -d "src/mods/$MOD" ]; then
+            echo "::error::标签 $TAG 里的 mod「$MOD」在 src/mods/ 下不存在（标签格式 <Mod>-v<版本>）"
+            exit 1
+          fi
+          bash tools/build.sh --zip "$MOD"
+          ZIP="dist/$MOD-$VER.zip"
+          if [ ! -f "$ZIP" ]; then
+            echo "::error::代码里 $MOD 的 VERSION 不是 $VER（打出来的包：$(ls dist)）。先改版本号再打标签"
+            exit 1
+          fi
+          echo "MOD=$MOD" >> "$GITHUB_ENV"
+          echo "VER=$VER" >> "$GITHUB_ENV"
+          echo "ZIP=$ZIP" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" "$ZIP" --title "$MOD $VER" --generate-notes \
+            --notes "安装：把 zip 解压到游戏根目录（MonsterHunterWilds 文件夹），需要先装 REFramework。许可：GPL-3.0。"

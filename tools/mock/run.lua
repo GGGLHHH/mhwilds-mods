@@ -181,8 +181,11 @@ local function mkdir_p(p)
     end
 end
 
+-- p 下的文件（不含子目录，不递归）。两个平台口径一致：Windows 的 dir /a-d 只列文件，Linux 用 find -type f
+-- （原来的 ls -1 会把子目录也列出来，GitHub Actions 上 list_tree 把 lib/ 当文件读，实测）
 local function list_dir(p)
-    local cmd = IS_WIN and ("dir /b /a-d " .. winpath(p) .. " 2>nul") or ("ls -1 '" .. p .. "' 2>/dev/null")
+    local cmd = IS_WIN and ("dir /b /a-d " .. winpath(p) .. " 2>nul")
+        or ("find '" .. p .. "' -mindepth 1 -maxdepth 1 -type f -printf '%f\\n' 2>/dev/null")
     local h = io.popen(cmd)
     local out = {}
     if h then
