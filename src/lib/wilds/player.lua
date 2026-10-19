@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- lib/wilds/player：主玩家（本机猎人）与它的当前动作。所有武器通用。
 --
 -- 路径（NOTES「角色与动作」）：app.PlayerManager:getMasterPlayer() → cPlayerManageInfo

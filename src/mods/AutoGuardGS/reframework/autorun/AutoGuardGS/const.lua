@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- AutoGuardGS/const：入口、防御、放刀几处都要用的常量。只放常量，不放状态
 local K = {}
 
@@ -7,6 +9,9 @@ K.VERSION = "v1.5"
 -- 不能写成 1.5：分析脚本会把它当成旧的 AutoParryGS v1.5（L = 26、hs 口径）去判
 K.PARRY_RULE = "1.6"
 K.HOST = "AutoGuardGS-" .. K.VERSION    -- HDR 的 host：标明放刀记录是合并版写的
+-- 署名（菜单顶上显示）。HOMEPAGE 为 nil 时不显示发布地址。许可证是 GPL-3.0（仓库根目录 LICENSE，打包时复制进发布包）
+K.AUTHOR = "GGG"
+K.HOMEPAGE = nil
 K.CONFIG_PATH = "AutoGuardGS.json"
 K.LEGACY_PARRY_CONFIG = "AutoParryGS.json"   -- 旧的独立放刀脚本的配置：首次加载迁移一次（入口 §3），只读不写
 

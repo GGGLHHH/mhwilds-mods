@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- lib/wilds/weapon：武器类型与武器动作参数。
 --
 -- 武器动作参数（app.user_data.WpXXActionParam）是**所有同种武器共用**的一份，包括 NPC 支援猎人：改了要用 lib/patch 记原值、

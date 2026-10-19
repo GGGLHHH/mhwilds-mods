@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- lib/wilds/forecast：怪物攻击预告（本来给 NPC AI 用的 cMsgEmAttackAreaResult）的读取。只读，不跨帧持有任何对象。
 --
 -- 机制和实测结论见 NOTES「攻击预告」「倒数怎么生成」：

@@ -61,6 +61,14 @@
 - 只在单人模式下测试过，联机表现未验证。联机时副本怪（在你这边不是主控的怪）不放刀。
 - 打开调试日志后，每次放刀会在游戏日志里多写两行。
 
+## 许可
+
+GPL-3.0-or-later（全文见 [LICENSE](LICENSE)），Copyright (C) 2026 GGG <1635656638@qq.com>。
+
+- 可以自由使用、修改、重新发布，包括修改后的版本。
+- 重新发布时必须保留原作者署名和这份许可证，并且以同样的 GPL-3.0 许可公开修改后的源码。
+- 发布包里每个 mod 都带一份 `LICENSE.txt`（`tools/build.sh` 打包时从仓库根目录复制进去）。
+
 ## 安装
 
 1. 安装 [REFramework](https://github.com/praydog/REFramework-nightly/releases) nightly 版（社区汉化版也可以）

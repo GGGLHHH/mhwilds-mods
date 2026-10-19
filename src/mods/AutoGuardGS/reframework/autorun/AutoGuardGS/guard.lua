@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- AutoGuardGS/guard：自动防御（原 AutoGuardGS v1.4.2，逻辑不变；每一条都在探针里验证过）
 --
 -- 被怪物打中、伤害结算之前（HunterCharacter.evHit_DamagePreProcess），打开角色状态标志里的防御标志：TECHNICAL_GUARD →

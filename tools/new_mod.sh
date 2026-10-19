@@ -23,7 +23,7 @@ cp -r templates/ModTemplate/. "$dst/"
 find "$dst" -depth -name '*ModTemplate*' | while read -r p; do
     mv "$p" "$(dirname "$p")/$(basename "$p" | sed "s/ModTemplate/$name/g")"
 done
-find "$dst" -type f -name '*.lua' -exec sed -i "s/ModTemplate/$name/g" {} +
+find "$dst" -type f \( -name '*.lua' -o -name '*.txt' \) -exec sed -i "s/ModTemplate/$name/g" {} +
 
 tools/check.sh $(find "$dst" -name '*.lua' | sort)
 echo "建好了：$dst。下一步：改入口脚本 $dst/reframework/autorun/$name.lua，然后 tools/deploy.sh"

@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- lib/ref：REFramework sdk 的小工具：查类型、读枚举、注册钩子。
 --
 -- 初始化时类型、方法拿不到要报清楚是哪个（need），别让后面的 nil 索引报一句看不懂的错。

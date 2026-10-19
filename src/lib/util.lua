@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- lib/util：数值检查、写日志用的格式化。
 --
 -- 整个库的约定（docs/ARCHITECTURE.md）：

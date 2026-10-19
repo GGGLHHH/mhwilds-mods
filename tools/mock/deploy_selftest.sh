@@ -34,6 +34,7 @@ mk_repo() {
     cp "$REPO/tools/check.sh" "$r/tools/check.sh"
     cp "$REPO/tools/build.sh" "$r/tools/build.sh"
     cp -r "$REPO/src" "$r/src"
+    cp "$REPO/LICENSE" "$r/LICENSE"   # build.sh 打包时把它复制进每个 mod
 }
 # 假游戏目录：REF 在、autorun 里有旧放刀脚本、别的 mod 和探针、一份旧的 AutoGuardGS.lua
 mk_game() {

@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- lib/config：reframework/data/ 下 JSON 配置的读写，只接受认识的键和合法的值（文件被手改坏也不至于出怪事）。
 --
 -- 读：data 里已有的键（默认值不是 nil），读到的值类型相同就收；有 validators[键] 的键交给它判断，它返回 nil 就不收。

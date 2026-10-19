@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- lib/wilds/action：请求猎人切动作。所有武器通用。
 --
 -- 关键规律（NOTES「改状态 vs 改动作」，实测）：改动作必须在帧开头（re.on_pre_application_entry("UpdateBehavior")）

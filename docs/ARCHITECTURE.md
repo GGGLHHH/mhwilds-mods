@@ -50,7 +50,7 @@ reframework/autorun/AutoGuardGS/lib/…        ← 共享库，模块名 "AutoGu
 
    库里不许写死 `require("…")`（check.sh 第 5 项）。写死的名字换个 mod 就找不到，或者会找到别的 mod 里的旧版本。
 3. **mod 只 `require` 自己命名空间下的模块**，也就是 `"<Mod>."` 开头的（check.sh 第 5 项）。
-4. **模块名写全。** REF 的 `require` 只找 `autorun/<名字里的点换成 />.lua`，不认 `?/init.lua`。HitboxViewer 也是写全名：`require("HitboxViewer.box.init")`。
+4. **模块名写全。** 官方 REF 往 `package.path` 里加的是 `autorun/?.lua`、`autorun/?/init.lua`、`autorun/?.dll`（REF 源码 `ScriptRunner.cpp`）。`init.lua` 其实也认，但汉化分支没核对过，mock 也只认全名，所以一律写全名。HitboxViewer 也是这么写的：`require("HitboxViewer.box.init")`。
 5. **改游戏共享参数用 `lib/patch`。** 结算后、每帧开头、`re.on_script_reset` 三处都要还原，这是项目约定。还原按后进先出：同一个字段改两次时，最后写回的才是原值。
 6. **调用顺序也是行为。** 游戏层的函数把原来的调用顺序固定下来了，例如 `player.snapshot()` 的读取顺序是主角 → 地址 → 武器 → 动作控制器 → 动作 ID。故障注入和逐刀等价都靠这个顺序，改之前先跑 mock。
 
@@ -131,4 +131,4 @@ mock 测的是 `build/` 里组装好的那份，和部署、发布的是同一�
 ## 已验证 / 待验证
 
 - **REF 的 `require` 路径（实测，2026-10-19）**：新布局在游戏里正常加载。`[AutoGuardGS] v1.5 loaded`、5 个钩子全部挂上、HDR 正常、读到防御角度，没有报错。`require("AutoGuardGS.lib.xxx")` 能找到 `autorun/AutoGuardGS/lib/xxx.lua`，子目录里的文件不会被当成脚本自动运行。
-- **Reset Scripts 会不会清空模块缓存（待验证，推测会）**：如果 REF 重置时保留 `package.loaded`，改了库代码以后 Reset 拿到的还是旧模块，只有重启游戏才生效。第一次 Reset 证明不了：旧版是单文件，缓存里没有可残留的模块。验证用探针 `probes/WeaponTypeProbe.lua`：它加载时往 `package.loaded` 里留一个标记，并记下标记之前是否已经存在。装进 autorun 后连续 Reset 两次，看日志里的 `[WeaponTypeProbe] RESET_SENTINEL`：`absent` = 全新状态，`still_there_from=…` = 缓存被保留了。
+- **Reset Scripts 会清空模块缓存（REF 源码确认，2026-10-19）**：`ScriptRunner::reset_scripts()` 先销毁主 Lua 状态（`m_main_state.reset()`），再新建一个 `ScriptState`，所以 `package.loaded` 一定是新的，改了库代码点 Reset 就生效。你装的是汉化分支，还要在游戏里确认一次：用探针 `probes/WeaponTypeProbe.lua`，它加载时往 `package.loaded` 里留一个标记，连续 Reset 两次，日志里的 `[WeaponTypeProbe] RESET_SENTINEL` 应该是 `absent`。

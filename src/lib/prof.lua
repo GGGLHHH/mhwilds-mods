@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- lib/prof：性能计数（诊断卡顿用）。一直计数（开销很小），每 interval 秒汇总一次交给 on_report。
 -- os.clock 在 Windows 上精度约 1 毫秒，单次耗时很小时只看调用次数更可靠。
 --

@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- lib/record：给离线分析脚本读的结构化日志行 "<TAG> KIND k=v k=v ..."。
 --
 -- spec 里每种行一串「字段名:格式」，格式：i 整数 / fN 保留 N 位小数 / s 文本 / b 布尔（写 1/0）/ h 地址（十六进制）；

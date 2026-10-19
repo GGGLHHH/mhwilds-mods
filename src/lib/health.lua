@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- lib/health：错误分级，不许静默吞错（AutoParryGS 的 CONTRACT 2.1 抽出来的通用版）。
 --
 --   核心模块（core 里列的名字）：red_window 秒内出错 red_count 次标红（H.red），只在第一次进红状态时发一行 RED。

@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- lib/wilds/hunter：猎人的状态标志、能不能举起防御。所有武器通用（防御动作的编号由调用方给）。
 --
 -- 状态标志（NOTES「防御」）：hunter:get_HunterStatus()._HunterStatusFlag 是 ace.cSafeContinueFlagGroup，方法

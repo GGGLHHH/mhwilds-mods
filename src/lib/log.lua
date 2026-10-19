@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- lib/log：带标签的日志。调试行受开关控制；按类别限量的警告，出错时不至于每帧刷一行。
 --
 -- 用法：

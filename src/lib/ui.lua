@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- lib/ui：REF 菜单（imgui）的出错隔离。
 --
 -- imgui 的树节点必须配对 tree_pop，画到一半抛错不 pop 会让整个 REF 菜单的栈错乱，所以菜单一律包在 U.tree 里。

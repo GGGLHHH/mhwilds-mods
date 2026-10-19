@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- ModTemplate v0.1：新 mod 的起点（tools/new_mod.sh 名字 会复制这个目录并把 ModTemplate 换成新名字）
 --
 -- 结构（docs/ARCHITECTURE.md）：
@@ -17,6 +19,9 @@ local mod = Mod.new({
     name = "ModTemplate",
     version = "v0.1",
     title = "模板 Mod",
+    author = "GGG",          -- 菜单顶上的署名；homepage = "发布地址" 也可以加
+    license = "GPL-3.0",
+
     config = {
         strength = 1.0,     -- 示例：数值配置，validator 夹到合法范围（enabled、debug_log 由骨架补上）
     },

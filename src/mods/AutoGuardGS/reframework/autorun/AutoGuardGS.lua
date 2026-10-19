@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- AutoGuardGS v1.5：大剑自动防御 + 自动放刀（实验）
 --
 -- 入口：配置、基础设施（日志、放刀记录、错误分级、性能计数）、把两个部件装起来，挂帧回调、Reset、存配置、菜单。
@@ -187,6 +189,8 @@ local function draw_stats()
 end
 
 local function draw_menu()
+    imgui.text_colored("作者 " .. K.AUTHOR .. (K.HOMEPAGE and ("   发布地址 " .. K.HOMEPAGE) or "")
+        .. "   开源许可 GPL-3.0", Ui.COLOR.GRAY)
     if cfg.unreadable then
         imgui.text_colored("读不出配置文件 AutoGuardGS.json：这次用默认设置，改动也不保存（免得盖掉原文件）。Reset Scripts 重读",
             Ui.COLOR.RED)

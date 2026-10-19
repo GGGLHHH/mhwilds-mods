@@ -49,6 +49,8 @@ for mod in "${mods[@]}"; do
     cp -r "$src/." "$out/"
     mkdir -p "$out/reframework/autorun/$mod/lib"
     cp -r src/lib/. "$out/reframework/autorun/$mod/lib/"
+    # GPL-3.0 要求发布时附带许可证全文：仓库根目录的 LICENSE 复制进每个 mod（README「许可」）
+    cp LICENSE "$out/reframework/autorun/$mod/LICENSE.txt"
     n=$(find "$out" -type f | wc -l)
     echo "  ▣ $out（$n 个文件）"
 

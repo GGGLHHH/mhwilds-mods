@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- lib/mod：mod 的骨架。把每个 mod 都要写的接线收在一起：配置读写、日志、性能计数、帧回调、Reset、存配置、菜单。
 -- 思路参考了 _CatLib 的 NewMod（一行建好一个 mod），另外加上本项目的约定：
 --   - 钩子、帧回调、菜单都包 pcall，出错写警告（按类别限量），不让错误漏进游戏
@@ -29,7 +31,8 @@ local M = {}
 
 -- opts.name：标签、配置文件名、菜单 ID（只用 [A-Za-z0-9_]）；opts.version；opts.title：菜单里显示的名字（默认 name）；
 -- opts.config：默认配置（原地改，enabled、debug_log 没写就补上）；opts.validators：见 lib/config；
--- opts.config_path：默认 "<name>.json"；opts.prof_keys：除 frame 以外还要计时的名字（给 M.timed 用）
+-- opts.config_path：默认 "<name>.json"；opts.prof_keys：除 frame 以外还要计时的名字（给 M.timed 用）；
+-- opts.author / opts.homepage / opts.license：菜单顶上的署名（都可以为 nil）
 function M.new(opts)
     local name, version = opts.name, opts.version or ""
     local config = opts.config or {}
@@ -128,6 +131,11 @@ function M.new(opts)
     end
 
     local function draw_header()
+        if opts.author or opts.homepage or opts.license then
+            imgui.text_colored((opts.author and ("作者 " .. opts.author) or "")
+                .. (opts.homepage and ("   发布地址 " .. opts.homepage) or "")
+                .. (opts.license and ("   开源许可 " .. opts.license) or ""), Ui.COLOR.GRAY)
+        end
         if cfg.unreadable then
             imgui.text_colored("读不出配置文件 " .. (opts.config_path or (name .. ".json"))
                 .. "：这次用默认设置，改动也不保存。Reset Scripts 重读", Ui.COLOR.RED)

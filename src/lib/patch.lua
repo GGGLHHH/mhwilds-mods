@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- lib/patch：共享参数的临时改写。先记原值再改，还原时按记录写回。
 --
 -- 为什么要它：游戏的 user_data 参数（武器动作参数等）往往所有角色共用，包括 NPC 支援猎人，改了不还原就是永久改了游戏。

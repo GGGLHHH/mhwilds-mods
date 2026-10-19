@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: GPL-3.0-or-later
+-- Copyright (C) 2026 GGG <1635656638@qq.com>
 -- AutoGuardGS/parry：自动放刀（原 AutoParryGS v1.6，放刀规则一处没改，有逐刀等价测试为证）
 --
 -- 按住抵消蓄力 (2,21)/(2,22) 时读怪物发给主角的攻击预告 cMsgEmAttackAreaResult，「打我的」DANGER 条目里最早一段的
