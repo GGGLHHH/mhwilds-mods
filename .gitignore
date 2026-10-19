@@ -8,3 +8,8 @@ desktop.ini
 *.log
 *.tmp
 tmp/
+
+# 模拟测试和离线分析的输出
+tools/mock/out/
+tools/out/
+__pycache__/
